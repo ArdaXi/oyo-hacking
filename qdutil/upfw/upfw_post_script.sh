@@ -59,6 +59,9 @@ if [ -f /tmp/QBookApp.ini ]; then
 	cp /tmp/QBookApp.ini /mnt/mmc0p3/settings/QBookApp.ini
 	echo "=== QBookApp ini is back ==="
 fi
+if [ -d /mnt/mmc1p1/dropbear ]; then
+	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p1/mnt/etc/dropbear/
+fi
 sync
 
 exit 0

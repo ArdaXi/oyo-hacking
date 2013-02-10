@@ -43,7 +43,7 @@ if [ -f /mnt/mmc1p1/usbdebug ]; then
    echo "usbdebug"
    /usr/local/sbin/usbdebug.sh
 fi
-#umount /mnt/mmc1p1
+umount /mnt/mmc1p1
 
 if [ -f /tmp/exec_em ]; then
 	# launch QEngineer
