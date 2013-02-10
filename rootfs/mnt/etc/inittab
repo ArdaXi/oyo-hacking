@@ -44,4 +44,4 @@ pr:12345:powerokwait:/sbin/shutdown -c "Power Restored; Shutdown Cancelled"
 3:2345:respawn:/sbin/getty 115200 ttySAC0
 
 # Run dropbear -ArdaXi
-SS:2345:respawn:/usr/sbin/dropbear -d /mnt/mmc1p1/dropbear_dss_host_key -r /mnt/mmc1p1/dropbear_rsa_host_key -F -E -p 22
+SS:2345:respawn:/usr/sbin/dropbear -d /etc/dropbear/dropbear_dss_host_key -r /etc/dropbear/dropbear_rsa_host_key -F -E -p 22
