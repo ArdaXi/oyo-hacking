@@ -1,0 +1,5 @@
+#!/bin/sh
+ACTUALCONF=/etc/resolv.conf
+if [ -f $ACTUALCONF.ppporig ] ; then
+	mv $ACTUALCONF.ppporig $ACTUALCONF
+fi

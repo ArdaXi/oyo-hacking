@@ -1,0 +1,10 @@
+# Add extra options here
+EXTRAOPTIONS=""
+#
+# This is the locale information that xinetd uses.  It is passed to every
+# server that xinetd starts.  It is set to en_US to maintain compatability
+# with previous Red Hat Linux releases.
+#
+# To remove all locale information from xinetd's environment, set
+# XINETD_LANG to the empty string or the string "none".
+XINETD_LANG="en_US"

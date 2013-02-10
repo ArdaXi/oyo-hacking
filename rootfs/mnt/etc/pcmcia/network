@@ -1,0 +1,29 @@
+#! /bin/sh
+#
+# network.sample $Revision: 1.1 $ $Date: 1995/05/25 04:30:06 $ (David Hinds)
+#
+# Initialize or shutdown a PCMCIA ethernet adapter
+#
+# This script should be invoked with two arguments.  The first is the
+# action to be taken, either "start", "stop", or "restart".  The
+# second is the network interface name.
+
+action=$1
+device=$2
+
+case "${action:?}" in
+'start')
+    #
+    # We don't do *anything* here. We get a hotplug event when the ethX device
+    # is registered, and we bring the device up there
+    #
+    ;;
+'stop')
+    #
+    [ -f /etc/sysconfig/network-scripts/ifcfg-${device} ] && \
+      /etc/sysconfig/network-scripts/ifdown ifcfg-${device}
+    ;;
+'restart')
+    /sbin/ifconfig ${device:?} down up
+    ;;
+esac

@@ -1,0 +1,135 @@
+#!/bin/sh
+#
+# nfslock       This shell script takes care of starting and stopping
+#               the NFS file locking service.
+#
+# chkconfig: 345 14 86
+# description: NFS is a popular protocol for file sharing across \
+#	       TCP/IP networks. This service provides NFS file \
+#	       locking functionality.
+# probe: true
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+if [ ! -f /etc/sysconfig/network ]; then
+    exit 0
+fi
+
+# Check for and source configuration file
+[ -f /etc/sysconfig/nfs ] && . /etc/sysconfig/nfs
+
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "${NETWORKING}" = "no" ] && exit 0
+
+# Start lockd from userland only if kernel <= 2.2.18
+OS_RELEASE=`uname --release`
+OS_RELEASE_MAJOR=`echo "$OS_RELEASE" | sed 's/\(^[0-9]\)\..*/\1/'`
+OS_RELEASE_MINOR=`echo "$OS_RELEASE" | sed 's/\(^[0-9]\)\.\([0-9]*\)\..*/\2/'`
+OS_RELEASE_VERSION=`echo "$OS_RELEASE" | sed 's/\(^[0-9]\)\.\([0-9]*\)\.\([0-9]*\).*/\3/'`
+
+if [ "$OS_RELEASE_MAJOR" -le 2 -a "$OS_RELEASE_MINOR" -le 2 -a "$OS_RELEASE_VERSION" -le 18 ] ; then
+    USERLAND_LOCKD="yes"
+else
+    USERLAND_LOCKD=
+fi
+
+if [ "$USERLAND_LOCKD" ] ; then
+    [ -x /sbin/rpc.lockd ] || exit 0
+fi
+
+[ -x /sbin/rpc.statd ] || exit 0 
+
+RETVAL=0
+if [ -n "${STATD_HOSTNAME}" ]; then
+    STATDARG="-n ${STATD_HOSTNAME}"
+else
+    STATDARG=""
+fi
+
+
+start() {
+    if [ ! -f /var/lock/subsys/nfslock ]; then
+	# Start daemons.
+	if [ "$USERLAND_LOCKD" ]; then
+	  echo -n $"Starting NFS locking: "
+	  daemon rpc.lockd
+	  echo
+	fi  
+	echo -n $"Starting NFS statd: "
+	# See if a statd's ports has been defined
+	[ -n "$STATD_PORT" ] && STATDARG="$STATDARG -p $STATD_PORT"
+	[ -n "$STATD_OUTGOING_PORT" ] \
+		&& STATDARG="$STATDARG -o $STATD_OUTGOING_PORT"
+	daemon rpc.statd "$STATDARG"
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/nfslock
+    fi
+    return $RETVAL
+}
+
+stop() {
+	# Stop daemons.
+	echo -n $"Stopping NFS locking: "
+	if [ "$USERLAND_LOCKD" ]; then
+	   killproc lockd
+	else
+	   killproc lockd -KILL
+	fi
+	echo
+	echo -n $"Stopping NFS statd: "
+	killproc rpc.statd
+	RETVAL=0
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/nfslock
+	return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+	;;
+  stop)
+  	stop
+	;;
+  status)
+	if [ "$USERLAND_LOCKD" ]; then
+	  status lockd
+	fi 
+	status rpc.statd
+	;;
+  restart)
+        stop
+	start
+	;;
+  probe)
+	if [ ! -f /var/lock/subsys/nfslock ] ; then
+	  echo $"start"; exit 0
+	fi
+	/sbin/pidof rpc.statd >/dev/null 2>&1; STATD="$?"
+	if [ "$USERLAND_LOCKD" ]; then
+	   /sbin/pidof lockd >/dev/null 2>&1; LOCKD="$?"
+	else
+	   LOCKD=0
+	fi
+	if [ $STATD = 1 -o $LOCKD = 1 ] ; then
+	  echo $"restart"; exit 0
+	fi
+	;;
+  condrestart)
+  	[ -f /var/lock/subsys/nfslock ] && {
+		stop
+		start
+	}
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|probe|condrestart}"
+	exit 1
+esac
+
+exit 0

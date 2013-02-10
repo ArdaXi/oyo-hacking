@@ -1,0 +1,283 @@
+#!/bin/sh
+# 
+# apmd_proxy - program dispatcher for APM daemon
+# Craig Markwardt (craigm@lheamail.gsfc.nasa.gov) 21 May 1999
+# David Brownell (db@post.harvard.edu) 9 June 1999
+#
+# This shell script is called by the APM daemon (apmd) when the state
+# of any power management function has changed.  The exact events that
+# trigger the calling of apmd_proxy depend on how apmd was configured
+# at compile time.
+#
+# Within this script the system administrator should put any commands
+# or actions which should be performed upon state transitions.
+#
+# apmd_proxy is called with specific arguments that describe the event
+# that has occurred.  It is this script's responsibility to query the
+# hardware or the APM service (via /proc/apm) for more information,
+# and to take the appropriate action.
+#
+# For example, apmd will call "apmd_proxy suspend system" just before
+# the system is scheduled to go into suspend mode.  The administrator
+# may wish to perform site-specific actions like unloading drivers or
+# disabling the network interface.  When the system is resumed later,
+# apmd will call "apmd_proxy resume normal", at which time those actions
+# should be reversed.
+#
+# If the kernel APM driver is version 1.10 or higher (use the "apm"
+# command to find out), apmd_proxy can return an error code for the
+# suspend and standby events, indicating whether the pending mode
+# should be rejected.  For example, apmd_proxy may decide if, based on
+# CPU or network activity or user instructions, a suspend initiated by
+# the APM BIOS should be rejected.
+#
+#    !! NOTE !!   This is not the apmd_proxy used on most Debian systems!
+#
+#   RETURN VALUE:
+#     0 - nominal return; suspend and standby events are accepted
+#     1 - reject a suspend or standby (MUST HAVE APM DRIVER 1.10 OR HIGHER)
+#
+# Here are the calling sequences for apmd_proxy:
+#
+# apmd_proxy start              - APM daemon has started
+# apmd_proxy stop               - APM daemon is shutting down
+# apmd_proxy suspend system     - APM system has requested suspend mode
+# apmd_proxy suspend critical   - APM system indicates critical suspend (*)
+# apmd_proxy standby system     - APM system has requested standby mode 
+# apmd_proxy suspend user       - User has requested suspend mode
+# apmd_proxy standby user       - User has requested standby mode
+# apmd_proxy resume suspend     - System has resumed from suspend mode
+# apmd_proxy resume standby     - System has resumed from standby mode
+# apmd_proxy resume critical    - System has resumed from critical suspend
+# apmd_proxy change battery     - APM system reported low battery
+# apmd_proxy change power       - APM system reported AC/battery change
+# apmd_proxy change time        - APM system reported need for time update (*)
+# apmd_proxy change capability  - APM system reported config. change (+)
+#
+# (*) - APM daemon may be modified to call these sequences
+# (+) - Available if kernel APM driver supports it (driver ver. 1.10 or higher)
+#
+# SIMPLIFIED CONFIGURATION  
+#
+# The operation of this script can be controlled either by setting the
+# following variables appropriately, or by editing the script itself.
+#
+# Set UTC to true if your clock is based on UTC time.  This settting
+# is overridden by any settings in /etc/sysconfig/clock.
+UTC=false
+#
+# Set SUSPEND_ON_AC to false if you wish to avoid suspend and standby
+# events when your machine is connected to AC power.  By default
+# suspends can occur on either battery or AC power.
+SUSPEND_ON_AC=true
+#
+# PCMCIA cards can be more or less amenable to an APM suspend event.
+# If you have a card that cannot be suspended properly (such as a SCSI
+# card), then it should be "ejected" before entering suspend mode.
+# The cards are not physically ejected; rather, the power is turned
+# off to them via the "cardctl eject" command, and is reactivated upon 
+# resume.
+PCMCIA_EJECT_ON_SUSPEND=false
+#
+#
+# DEBUGGING
+#
+# Uncomment commands under either METHOD 1 or METHOD 2 for debugging
+# messages to the system log.  Not recommended for general use, since
+# it may activate your disk more than needed.  The second method will
+# log all commands and error messages encountered by apmd_proxy.
+#
+# METHOD 1 - Logs command line arguments of apmd_proxy only
+# logger apmd_proxy $*    
+# METHOD 2 - Logs entire run of apmd_proxy to /tmp/apmd_proxy.log
+# echo '****************' >> /tmp/apmd_proxy.log
+# echo "$0 $*"            >> /tmp/apmd_proxy.log
+# date                    >> /tmp/apmd_proxy.log
+# echo '----------------' >> /tmp/apmd_proxy.log
+# exec                   2>> /tmp/apmd_proxy.log
+# set -x
+#
+# A convenience bash routine is included to show how to query AC power
+# status.
+#
+# *******************************************************************
+
+
+power_conserve() {
+	# Set IDE hard disk spindown time to a short time
+	# Disabled by default.
+#	/sbin/hdparm -q -S 18 /dev/hda			# 18 == 1.5 minutes
+	true;
+}
+
+power_performance() {
+	# Disable IDE hard disk spindown
+	# Disabled by default.
+#	/sbin/hdparm -q -S 0 /dev/hda
+	true;
+}
+
+# NOTE:  APM BIOS drivers in kernel 2.2 and later have handled this
+update_clock () {
+	# update kernel to match hardware clock
+	if [ -f /etc/sysconfig/clock ]; then
+	    . /etc/sysconfig/clock
+	    # old style
+	    if [ "$CLOCKMODE" = GMT ]; then
+		UTC=true
+	    fi
+	fi
+	if [ $UTC = false ]; then
+	    FLAG=""
+	else
+	    FLAG="-u"
+	fi
+	[ -x /sbin/clock ] && clock -s $FLAG || hwclock -s $FLAG
+}
+
+
+# Start of main procedure.  Included are examples of some mild power
+# management profiling, disabled by default.  Timer-based system
+# suspends and standbys can be rejected if we are on AC power.
+#
+
+case "$1" in
+
+  # ----------------------- SUSPEND and STANDBY ----------------------
+  # Handle customized behavior for APM standby and suspend events
+  # here.  Depending on your system, you may wish to enable some of
+  # the example actions that follow.
+
+  "suspend"|"standby")
+
+	# Activate this segment if you wish to disable normal suspend
+	# events when you are on AC power.  This segment only works if
+	# your APM BIOS sends "suspend system" events after an idle
+	# period.  Also, you must be running a Linux kernel APM
+	# driver version 1.10 or higher (run "apm" to find out).
+	#
+	if [ $SUSPEND_ON_AC = false -a $2 = system ]; then
+		if on_ac_power >/dev/null; then
+			exit 1  # Reject (NOTE kernel support must be enabled)
+		fi
+	fi
+
+	if [ $1 = standby ]; then
+		exit 0
+	fi
+	# Standby events typically do not go past this point, but can
+	# if you comment out the above lines.
+
+	# Activate this segment if you wish to disable PCMCIA services
+	# upon suspend events.  The PCMCIA driver nominally will
+	# suspend all cards before reaching this point, but certain
+	# cards cannot be suspended properly (notably, SCSI cards).
+	# These cards must be forcefully software-ejected.  If you
+	# uncomment this code, then be sure to also uncomment the
+	# corresponding segment under RESUME.  Calling "cardctl
+	# suspend" is needed for systems whose PCMCIA modules are
+	# available but not APM-aware.  Calling it more than once is
+	# not harmful.
+	#
+	if [ -x /sbin/cardctl ]; then 
+		if [ $PCMCIA_EJECT_ON_SUSPEND = true ]; then
+			/sbin/cardctl eject
+		else
+			/sbin/cardctl suspend
+		fi
+	fi
+
+	# Uncomment this segment if your graphics card does not resume
+	# in graphics mode properly (ie, in X windows).  This action
+	# changes the screen to virtual console number 1, which is
+	# usually a text console.  Upon resume, you will need to
+	# change back to your X console manually.
+	#
+	# if [ -x /usr/bin/chvt ]; then
+	# 	/usr/bin/chvt 1; sleep 1
+	# fi
+
+	# other common actions:  unload troublesome drivers
+	# EXAMPLE: OSS sound may not suspend/resume properly
+	#    - Unload the drivers here and then reload upon resume
+	#      Path may vary.  Be sure to enable "soundon" below.
+	#	/usr/local/bin/soundoff
+	;;
+
+  # ------------------------------- RESUME ---------------------------
+  # Resume ... from standby is a NOP, except the clock update.
+  "resume")
+	# Typically the Linux system clock needs to be reset.
+	update_clock
+
+	# Activate this segment if you "ejected" PCMCIA cards above.
+	# The default operation is to "resume", which is required for
+	# systems whose PCMCIA modules are not APM-aware.
+	#
+	if [ $2 = suspend -a -x /sbin/cardctl ]; then
+		if [ $PCMCIA_EJECT_ON_SUSPEND = true ]; then
+			/sbin/cardctl insert
+		else
+			/sbin/cardctl resume
+		fi
+	fi
+
+	# Drives can forget their time-out setting after suspend,
+	# so we may have to reprogram the drive.
+        if on_ac_power >/dev/null; then
+                power_performance
+        else
+                power_conserve
+        fi
+
+	# other common actions:  reload troublesome drivers
+	# EXAMPLE: reload OSS sound drivers.  Path may vary.
+	#	/usr/local/bin/soundon
+	;;
+
+  # ------------------------------- START ----------------------------
+  # Called when apmd first starts.
+  # If we are on battery power, then attempt to "conserve" power.
+  "start")
+  	if on_ac_power >/dev/null; then
+		power_performance
+	else
+		power_conserve
+	fi
+	;;
+
+  # ------------------------------- STOP -----------------------------
+  # Called when apmd is terminated.
+  # Default mode, when apmd is off, is to be in "performance" mode.
+  "stop")
+	power_performance
+	;; 
+
+  # ------------------------ CHANGE in STATUS ------------------------
+  "change")
+	case $2 in
+	    "power")
+		# switched to/from AC power, added/removed battery, etc
+		if on_ac_power >/dev/null; then
+			power_performance
+		else
+			power_conserve
+		fi
+		;;
+	    "time")
+		# normally not called
+		update_clock
+		;;
+	    "battery")
+		# battery is at "low" level (BIOS defines -- e.g. as 50%)
+		# can't do much of anything useful
+		;;
+	    "capability")
+		# e.g. added new hardware (not battery!)
+		;;
+	esac
+	;;
+
+esac
+
+exit 0

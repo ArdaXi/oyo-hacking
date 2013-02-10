@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Returns 0 (true) if on AC power; 1 (false) if on battery power or unknown.
+# If false, prints the current battery level on stdout.
+#
+# Example shell script:
+#
+# if on_ac_power >/dev/null; then
+#	echo On AC power...
+# else
+#	echo On battery power: battery level is $(on_ac_power)
+# fi
+#
+
+# if no /proc/apm, assume we're on wall power.
+[ ! -f /proc/apm ] && exit 0;
+
+exec awk </proc/apm '
+	/^[0-9.]* [0-9.]* 0x.. 0x../ {
+		if ($4 == "0x01")
+			exit 0;
+		else {
+			sub("%", "", $7);
+			sub("-1", "100", $7);
+			print $7;
+			exit 1;
+		}
+	}
+'

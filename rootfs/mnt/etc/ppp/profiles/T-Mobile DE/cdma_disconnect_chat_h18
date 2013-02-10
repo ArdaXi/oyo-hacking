@@ -1,0 +1,7 @@
+ABORT 'NO DIAL TONE' 
+ABORT 'NO ANSWER' 
+ABORT 'NO CARRIER' 
+ABORT DELAYED
+SAY   '\nSending break to the modem\n'
+''   +++ATH
+SAY  '\nPDP context detached\n'

@@ -1,0 +1,49 @@
+#!/bin/sh
+kill $(ps |grep QBookApp | grep -v grep | awk '{print $1}')
+killall QFactory
+
+# setup font path
+export QT_QWS_FONTDIR=/usr/local/qisda/fonts
+
+# setup lang & path
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export LD_LIBRARY_PATH=/usr/local/qisda/tslib/lib:/usr/local/lib
+export PATH=/usr/local/sbin:/usr/local/qisda/bin:/usr/local/qisda/tslib/bin:$PATH
+
+# setup tslib
+export TSLIB_CONSOLEDEVICE=none
+export TSLIB_FBDEVICE=/dev/fb0
+export TSLIB_TSDEVICE=/dev/input/event1
+#export TSLIB_CALIBFILE=/usr/local/qisda/tslib/etc/pointercal
+export TSLIB_CONFFILE=/usr/local/qisda/tslib/etc/ts.conf
+export TSLIB_PLUGINDIR=/usr/local/qisda/tslib/lib/ts
+
+# setup qt qws
+export QWS_MOUSE_PROTO="qbook:/dev/input/event1"
+export QWS_DBLCLICK_DISTANCE=20
+export QWS_KEYBOARD="qbook:/dev/input/event0"
+
+# for 9" screen
+#export QWS_DISPLAY="transformed:qbook:mmWidth=203:mmHeight=270:0"
+
+# for 6" screen
+export QWS_DISPLAY="transformed:qbook:mmWidth=158:mmHeight=211:0"
+
+# setup directory
+if [ -d /mnt/storage ]; then
+    mkdir -p /mnt/storage/settings
+    mkdir -p /mnt/storage/data
+fi
+
+# setup settings
+if [ ! -e /home/settings/QBookApp.ini ]; then
+    cp /usr/local/qisda/etc/QBookApp.default.ini /home/settings/QBookApp.ini
+fi
+
+# exec app
+$1 -qws
+
+# remove fifo if any
+rm -f /tmp/mmi
+

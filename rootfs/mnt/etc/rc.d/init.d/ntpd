@@ -1,0 +1,143 @@
+#!/bin/bash
+#
+# ntpd		This shell script takes care of starting and stopping
+#		ntpd (NTPv4 daemon).
+#
+# chkconfig: - 58 74
+# description: ntpd is the NTPv4 daemon. \
+# The Network Time Protocol (NTP) is used to synchronize the time of \
+# a computer client or server to another server or reference time source, \
+# such as a radio or satellite receiver or modem.
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+if [ -f /etc/sysconfig/ntpd ];then
+        . /etc/sysconfig/ntpd
+fi
+
+ntpconf=/etc/ntp.conf
+ntpstep=/etc/ntp/step-tickers
+
+
+RETVAL=0
+prog="ntpd"
+
+readconf() {
+	# get the servers from step-ticker
+        tickers=''
+        if [ -s "$ntpstep" ]; then
+	    tickers=`/bin/sed -e 's/\#.*$//g' $ntpstep`
+        fi
+	timeservers=`/bin/awk '$1=="peer"||$1=="server"{print $2}' $ntpconf|fgrep -v 127.127.1.0`
+
+	# check for -x
+	OPTIND=0
+	dostep=''
+	dropstr=''
+	ntpchroot=''
+	while getopts ":46aAbc:dD:f:gk:l:LmnN:p:P:qr:s:t:v:V:xU:T:" args $OPTIONS;
+	do 
+	  if [ "$args" = "x" ]; then
+	      dostep='yes' 
+	  fi
+	  if [ "x${args}" = xT ]; then
+	      ntpchroot="${OPTARG}"
+              ntpconf="${ntpchroot}/etc/ntp.conf"
+	      ntpstep="${ntpchroot}/etc/ntp/step-tickers"
+	      break
+	  fi
+          if [ "$args" = "U" ]; then
+        	# correct the options string
+		OPTIONS=$(echo $OPTIONS|sed -e 's#-U#-u#g')
+		echo "Please change '-U ntp' to '-u ntp' in /etc/sysconfig/ntpd"
+	  fi
+
+          if [ "$args" = "u" ]; then
+              dropstr="-U $OPTARG"
+          fi
+
+
+	done
+	OPTIND=0
+
+	[ -x /usr/sbin/ntpd -a -f $ntpconf ] || exit 0
+}
+
+start() {
+	readconf;
+
+        if [ -z "$tickers" ]; then
+	    tickers=$timeservers
+        fi
+
+	if [ -s "$ntpstep" -o -n "$dostep" ]; then
+	    # Synchronize with servers if step-tickers exists
+	    # or the -x option is used
+	    echo -n $"$prog: Synchronizing with time server: "
+	    /usr/sbin/ntpdate $dropstr -s -b -p 8 $tickers 2>/dev/null >/dev/null
+	    RETVAL=$?
+	    [ $RETVAL -eq 0 ] && success || failure
+	    echo
+	    if [ $RETVAL -ne 0 ]; then
+	            OPTIONS="$OPTIONS -g"
+	    fi
+	else
+	    # -g can replace the grep for time servers
+	    # as it permits ntpd to violate its 1000s limit once.
+	    OPTIONS="$OPTIONS -g"
+	fi
+        # Start daemons.
+        echo -n $"Starting $prog: "
+        daemon ntpd $OPTIONS
+	RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ntpd
+	return $RETVAL
+}
+
+stop() {
+        echo -n $"Shutting down $prog: "
+	killproc ntpd
+	RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/ntpd
+	return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+        ;;
+  stop)
+	stop
+        ;;
+  status)
+	status ntpd
+	RETVAL=$?
+	;;
+  restart|reload)
+	stop
+	start
+	RETVAL=$?
+	;;
+  condrestart)
+	if [ -f /var/lock/subsys/ntpd ]; then
+	    stop
+	    start
+	    RETVAL=$?
+	fi
+	;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+        exit 1
+esac
+
+exit $RETVAL

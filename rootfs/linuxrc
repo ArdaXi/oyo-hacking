@@ -1,0 +1,73 @@
+#!/bin/sh
+
+/bin/echo "mount /etc as ramfs"
+/bin/mount -n -t ramfs ramfs /etc
+/bin/mount -n -t tmpfs tmpfs /tmp
+/bin/cp -af /mnt/etc/* /etc
+#/bin/chmod 666 /dev/tts/0
+#/bin/mount -n -t ramfs ramfs /var/www
+#/bin/cp -R /mnt/www/* /var/www
+
+#echo "re-create the /etc/mtab entries"
+# re-create the /etc/mtab entries
+#/bin/mount -f -t cramfs -o remount,ro /dev/mtdblock/3 /
+#/bin/mount -f -t ramfs ramfs /etc
+
+#Leo
+/bin/mount -t yaffs /dev/mtdblock4 /mnt/storage
+#insmod /sbin/g_file_storage.ko file=/dev/mmcblk0p2 removable=1
+#mount rootfs rw on moviNand partition-3(by Howard,2010/01/06)
+/bin/mount -o rw /dev/mmcblk0p3 /rwdata
+
+#mount moviNAND
+/bin/mount -t vfat -o sync,noatime /dev/mmcblk0p2 /mnt/mmc0p2
+
+#mount 4th moviNand partition(by Howard,2010/03/01)
+/bin/mount -o rw,sync /dev/mmcblk0p4 /mnt/mmc0p4
+
+#kit
+/usr/local/sbin/touch_setting 1 10
+/usr/local/sbin/get_env_adc_to_kernel.o
+/usr/local/sbin/get_env_voltage_to_kernel.o
+
+# howard, hotkey to do touch calibration (KEY_HOME, KEY_NEWS)
+/usr/local/sbin/touch_cmd 9 102 427
+
+# KEY_HOME, KEY_BOOK
+/usr/local/sbin/hotkey_cmd "echo 0 > /tmp/exec_em"  102 247
+
+# KEY_HOME, KEY_BOOK
+# /usr/local/sbin/hotkey_cmd /usr/local/sbin/usbdebug.sh 102 247
+mount /dev/mmcblk1p1 /mnt/mmc1p1
+if [ -f /mnt/mmc1p1/usbdebug ]; then
+   echo "usbdebug"
+   /usr/local/sbin/usbdebug.sh
+fi
+umount /mnt/mmc1p1
+
+if [ -f /tmp/exec_em ]; then
+	# launch QEngineer
+	/qdutil/em/start /qdutil/em/QEngineer &
+else
+	# launch QBookApp
+	. /usr/local/qisda/bin/QBookApp.sh &
+fi
+
+#for wifi
+#export LD_LIBRARY_PATH=/usr/local/arm/tslib/lib:/usr/local/Trolltech/QtEmbedded-4.5.1-arm/plugins/imageformats:/usr/local/lib
+#Hiko {
+#insmod /usr/local/sbin/mt5921sta_sdio.ko
+#Hiko }
+#/usr/local/sbin/iwconfig wlan0 mode managed essid WIFI_TEST_ONLY_ASUSAP
+#ifconfig wlan0 192.168.1.123
+#/sbin/udhcpc -i wlan0 -s /usr/local/sbin/simple.script
+exec /usr/local/sbin/s3c_wifi_cmd 2 &
+
+#for Touch (by Asuka)
+#exec /usr/local/sbin/touch_cmd 1 &
+
+
+
+exec /sbin/init
+#mount -t jffs2 /dev/mtdblock3 /demo
+#/demo/mfc sh.m5v vga.264           

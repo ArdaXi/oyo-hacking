@@ -1,0 +1,97 @@
+.\" apmsleep.1
+.\"
+.TH RTCSLEEP 1 "endort aux modes APM suspendu/veille" "APM" \" -*- nroff -*-
+.SH NOM
+apmsleep \- met en mode suspendu ou veille et rallume ultérieurement
+.SH SYNOPSIS
+.B apmsleep
+[\-sSnwhVd] [\-\-suspend] [\-\-standby] [\-\-noapm]
+[\-\-wait] [\-\-help]  [\-\-version] [\-\-debug]
+[+]hh:mm
+.SH DESCRIPTION
+Certains ordinateurs, particulièrement des portables, peuvent être
+rallumés depuis un mode suspendu de basse consommation en utilisant la
+puce Horloge-temps-réèl (RTC).
+.B Apmsleep
+peut être utilisé pour régler l'heure d'alarme dans la RTC et pour passer
+en mode suspendu ou veille. Une interruption provenant de la RTC provoque
+le réveil de l'ordinateur. Le programme détecte cet évènement, en attendant
+un saut dans le temps du noyau et se termine avec succès. Si aucun saut
+n'intervient sous une minute, ou que quelque chose se passe mal, la valeur
+de retour sera différente de zéro.
+.PP
+L'heure de réveil peut être spécifiée en deux formats\~:
+.PP
+.B +hh:mm
+spécifie un décalage par rapport à l'heure actuelle. L'ordinateur se
+réveillera dans exactement hh heures et mm minutes plus quelques secondes
+pour se réveiller.
+.PP
+.B hh:mm
+spécifie une heure
+.B locale 
+absolue au format 24 heures. L'heure stockée dans le RTC n'est pas
+importante. Vous pouvez changer la zone de temps utilisée, courament
+avec la variable d'environnement TZ. Les heures d'été/hiver ne sont pas
+prises en compte dans cette version, mais le seront peut-être dans une
+version future.
+.TP
+.B \-V, \-\-version
+Affiche la version du programme
+.B apmsleep
+et termine immédiatement.
+.TP
+.B \-s, \-\-suspend
+Met la machine en mode suspendu si possible (par défaut). Sur mon portable,
+le mode suspendu éteint tout sauf la mémoire.
+.TP
+.B \-S, \-\-standby
+Met la machine en mode veille si possible. Sur mon portable, le mode
+veille éteint l'écran, le disque dur et le processeur.
+.TP
+.B \-w, \-\-wait
+Attend indéfiniment le saut de temps.
+.TP
+.B \-n, \-\-noapm
+N'appelle pas /usr/bin/apm pour suspendre l'ordinateur, règle seulement
+l'alarme de l'horloge et attend le saut de temps.
+.TP
+.B \-d, \-\-debug
+Affiche quelques informations sur ce qui est en train de se passer.
+.SH CONFIGURATION SYSTÈME REQUISE
+.TP
+.B Noyau
+Le périphérique spécial /dev/rtc doit exister et le noyau Linux doit être
+compilé avec le support APM et RTC (CONFIG_RTC, et
+les CONFIG_APM* appropriés). 
+.TP
+.B BIOS
+L'ordinateur doit avoir l'option 'suspendre vers la mémoire' activée dans
+le BIOS\~; 'suspendre vers le disque' ne va pas fonctionner, car l'ordinateur
+est complètement éteint. vous n'avez pas besoin d'activer la minuterie de
+l'ALARME, elle sera activée par apmsleep. Sur certaines cartes mères, vous
+pouvez déterminer quelles interruptions peuvent être utilisées pour réveiller
+à partir du mode suspendu. Si vous en possèdez une de ce type, vous voudrez
+peut-être vous assurer que le clavier (IRQ 1) et la RTC (IRQ 8) 
+sont parmi ces interruptions.
+.TP
+.B Privilèges
+Ce programme doit être exécuté comme administrateur (root) ou avoir
+l'attribut SUID activé (voir chmod(1)).
+.PP
+.SH BOGUES
+Apmsleep ne peut pas détecter quel evènement a terminé la mise en veille.
+Les evènements possibles sont\~: activité du clavier ou de la souris, appel
+sur le modem, alarme de la RTC, n'importe quelle autre interruption.
+
+Ce programme n'a été testé que sur un portable Winbook XL (Pentium). 
+Il peut ne pas fonctionner sur votre matériel.
+.SH AUTEUR
+Écrit par Peter Englmaier (ppe@pa.uky.edu) et pouvant être distribué suivant
+les termes de la Licence Publique Générale GNU. Le code est basé sur le
+programme exemple de test de la RTC de Paul Gortmacher. Il n'y a ABSOLUMENT
+AUCUNE GARANTIE pour ce programme. Le mainteneur actuel est Peter Englmaier.
+.SH "VOIR AUSSI"
+.BR xapm "(1), "apmd (8), rtc.txt "(Documentation du Noyau Linux)"
+.SH TRADUCTION
+Cette page d'aide a été traduite par José JORGE <jose.jorge@oreka.com>

@@ -1,0 +1,82 @@
+#!/bin/bash
+PATH=/sbin:/usr/sbin/:/bin:/usr/bin
+
+cd /etc/sysconfig/network-scripts
+. network-functions
+
+CONFIG=$1
+[ -f "${CONFIG}" ] || CONFIG=ifcfg-${1}
+source_config
+
+if [ -n "$IKE_PSK" ]; then
+  KEYING=automatic
+  IKE_METHOD=PSK
+fi
+ 
+if [ -n "$IKE_CERTFILE" ]; then
+  KEYING=automatic
+  IKE_METHOD=X509
+fi
+ 
+if [ -n "$IKE_PEER_CERTFILE" ]; then
+  KEYING=automatic
+  IKE_METHOD=X509
+fi
+
+if [ -n "$IKE_DNSSEC" ]; then
+  KEYING=automatic
+  IKE_METHOD=X509
+fi
+if [ -n "$RSA_KEY" ]; then
+  KEYING=automatic
+  IKE_METHOD=RSA
+fi
+
+[ -z "$KEYING" ] && KEYING=manual
+
+if [ -n "$SRCNET" -o -n "$DSTNET" ]; then
+  MODE=tunnel
+else
+  MODE=host
+fi
+
+if [ -z "$SRC" ]; then
+    SRC=`ip -o route get to $DST | sed "s|.*src \([^ ]*\).*|\1|"`
+fi
+
+if [ "$KEYING" = "manual" ]; then
+    setkey -c << EOF
+delete $SRC $DST ah $SPI_AH_OUT;
+delete $DST $SRC ah $SPI_AH_IN;
+delete $SRC $DST esp $SPI_ESP_OUT;
+delete $DST $SRC esp $SPI_ESP_IN;
+EOF
+fi
+
+if [ "$MODE" = "host" ]; then
+	setkey -c << EOF
+	spddelete $SRC $DST any -P out;
+	spddelete $DST $SRC any -P in;
+EOF
+else
+      [ -z "$SRCNET" ] && SRCNET="$SRC/32"
+      [ -z "$DSTNET" ] && DSTNET="$DST/32"
+      
+      [ -z "$SRCGW" ] && SRCGW=`ip -o route get to $SRCNET | sed "s|.*src \([^ ]*\).*|\1|"`
+      ip route del to $DSTNET via $SRCGW src $SRCGW
+
+      /sbin/setkey -c >/dev/null 2>&1 << EOF
+	spddelete $SRCNET $DSTNET any -P out;
+	spddelete $DSTNET $SRCNET any -P in;
+EOF
+fi
+
+
+if [ "$KEYING" = "automatic" ]; then
+   racoontmp=`mktemp /etc/racoon/racoon.XXXXXX`
+   grep -v "^include \"/etc/racoon/$DST.conf\";" /etc/racoon/racoon.conf >> $racoontmp
+   mv -f $racoontmp /etc/racoon/racoon.conf
+   pidof -x /usr/sbin/racoon > /dev/null 2>&1 && killall -HUP /usr/sbin/racoon
+fi
+
+/etc/sysconfig/network-scripts/ifdown-post $CONFIG

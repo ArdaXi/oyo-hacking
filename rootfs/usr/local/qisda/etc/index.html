@@ -1,0 +1,54 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Starseite</title>
+	
+	<style type="text/css">
+		p {
+			text-align: center;
+			font: 22px PMN Caecilia LT, Arial, Helvetica, Tahoma, sans-serif;
+		}
+		
+		a {
+			color: #000;
+			text-decoration: none;
+			display: inline-block;
+			width: 269px;
+			height: 128px;
+			margin: 6px;
+			text-align: center;
+			line-height: 128px;
+			background: url(button.png) no-repeat top left;
+			font-size: 22px;
+		}
+	</style>
+</head>
+<body>
+	<script type="text/javascript">
+		if (navigator.language.indexOf("de") >= 0) {
+			document.write('<p>Bitte tragen Sie oben die gewünschte Web-Adresse ein.</p>');
+		} else if (navigator.language.indexOf("pl") >= 0) {
+			document.write('<p>Wprowadź adres www do paska adresowego powyżej</p>');
+		} else if (navigator.language.indexOf("nl") >= 0) {
+			document.write('<p>Voer een url in of klik op een van de buttons.</p>');
+		} else {
+			document.write('<p>Enter the URL above or use one of the buttons.</p>');
+		}
+	</script>
+	<br />
+	<p>
+		<script type="text/javascript">
+			if (navigator.language.indexOf("de") >= 0) {
+			document.write('<a href="http://www.google.de">Google</a><a href="http://de.wikipedia.org">Wikipedia</a>');
+		} else if (navigator.language.indexOf("pl") >= 0) {
+			document.write('<a href="http://www.google.pl">Google</a><a href="http://pl.wikipedia.org">Wikipedia</a>');
+		} else if (navigator.language.indexOf("nl") >= 0) {
+			document.write('<a href="http://www.oyo.nl">OYO</a><a href="http://www.selexyz.nl">Selexyz.nl</a><a href="http://www.google.nl">Google</a><a href="http://nl.wikipedia.org">Wikipedia</a>');
+		} else {
+			document.write('<a href="http://www.google.com">Google</a><a href="http://en.wikipedia.org">Wikipedia</a>');
+		}
+		</script>		
+	</p>
+</body>
+</html>

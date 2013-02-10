@@ -1,0 +1,16 @@
+#! /bin/sh
+
+[ -x /etc/rc.d/init.d/isdn ] || exit 0
+
+. /etc/pcmcia/shared
+
+case "$ACTION" in
+
+'start' )
+#	/etc/rc.d/init.d/isdn start
+	;;
+'stop' )
+	/etc/rc.d/init.d/isdn stop
+	;;
+esac
+exit 0

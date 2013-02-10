@@ -1,0 +1,16 @@
+TIMEOUT         15
+ABORT           "DELAYED"
+ABORT           "BUSY"
+ABORT           "ERROR"
+ABORT           "NO DIALTONE"
+ABORT           "NO CARRIER"
+TIMEOUT         40
+''              \rAT
+OK              ATS0=0
+OK              ATE0V1
+OK              AT+CGDCONT=1,"ip","internet"
+OK              ATD*99#
+CONNECT         ''
+
+
+

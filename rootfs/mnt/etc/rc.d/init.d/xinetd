@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# xinetd        This starts and stops xinetd.
+#
+# chkconfig: 345 56 50
+# description: xinetd is a powerful replacement for inetd. \
+#	       xinetd has access control mechanisms, extensive \
+#              logging capabilities, the ability to make services \
+#              available based on time, and can place \
+#              limits on the number of servers that can be started, \
+#              among other things.
+#
+# processname: /usr/sbin/xinetd
+# config: /etc/sysconfig/network
+# config: /etc/xinetd.conf
+# pidfile: /var/run/xinetd.pid
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+
+# Source function library.
+. /etc/init.d/functions
+
+# Get config.
+test -f /etc/sysconfig/network && . /etc/sysconfig/network
+
+# More config
+
+test -f /etc/sysconfig/xinetd && . /etc/sysconfig/xinetd
+
+# Check that we are root ... so non-root users stop here
+[ `id -u` = 0 ] || exit 1
+
+# Check that networking is up.
+[ "${NETWORKING}" = "yes" ] || exit 0
+
+[ -f /usr/sbin/xinetd ] || exit 1
+[ -f /etc/xinetd.conf ] || exit 1
+
+RETVAL=0
+
+prog="xinetd"
+
+start(){
+    echo -n $"Starting $prog: "
+
+# Localization for xinetd is controlled in /etc/synconfig/xinetd
+    if [ -z "$XINETD_LANG" -o "$XINETD_LANG" = "none" -o "$XINETD_LANG" = "NONE" ]; then
+        unset LANG LC_TIME LC_ALL LC_MESSAGES LC_NUMERIC LC_MONETARY LC_COLLATE
+    else
+        LANG="$XINETD_LANG"
+        LC_TIME="$XINETD_LANG"
+        LC_ALL="$XINETD_LANG"
+        LC_MESSAGES="$XINETD_LANG"
+        LC_NUMERIC="$XINETD_LANG"
+        LC_MONETARY="$XINETD_LANG"
+        LC_COLLATE="$XINETD_LANG"
+        export LANG LC_TIME LC_ALL LC_MESSAGES LC_NUMERIC LC_MONETARY LC_COLLATE
+    fi
+    unset HOME MAIL USER USERNAME
+    daemon $prog -stayalive -pidfile /var/run/xinetd.pid "$EXTRAOPTIONS"
+    RETVAL=$?
+    echo
+    touch /var/lock/subsys/xinetd
+    return $RETVAL
+}
+
+stop(){
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    RETVAL=$?
+    echo
+    rm -f /var/lock/subsys/xinetd
+    return $RETVAL
+
+}
+
+reload(){
+    echo -n $"Reloading configuration: "	
+    killproc $prog -HUP
+    RETVAL=$?
+    echo
+    return $RETVAL
+}
+
+restart(){
+    stop
+    start
+}
+
+condrestart(){
+    [ -e /var/lock/subsys/xinetd ] && restart
+    return 0
+}
+
+
+# See how we were called.
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+	status $prog
+	;;
+    restart)
+	restart
+	;;
+    reload)
+	reload
+	;;
+    condrestart)
+	condrestart
+	;;
+    *)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
+	RETVAL=1
+esac
+
+exit $RETVAL

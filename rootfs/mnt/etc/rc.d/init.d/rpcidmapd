@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# rpcidmapd     Start up and shut down RPC name to UID/GID mapper
+#
+# Authors:	Chuck Lever <cel@netapp.com>
+#
+# chkconfig: 345 18 68
+# description: Starts user-level daemon for NFSv4 that maps user \
+#              names to UID and GID numbers.
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+if [ ! -f /etc/sysconfig/network ]; then
+    exit 0
+fi
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "${NETWORKING}" = "no" ] && exit 0
+
+[ ! -x /usr/sbin/rpc.idmapd ] && exit 0
+
+OPTIONS=""
+RETVAL=0
+prog="rpc.idmapd"
+
+case "$1" in
+  start|condstart)
+	# Make sure the daemon is not already running.
+	if status $prog > /dev/null ; then
+		[ "$1" = "condstart" ] && killproc $prog "-SIGHUP"
+		exit 0
+	fi
+	rm -f /var/lock/subsys/$prog
+
+	echo -n $"Starting RPC idmapd: "
+
+	# Load sunrpc which mounts the rpc_pipes fs.
+	[ -x /sbin/lsmod -a -x /sbin/modprobe ] && {
+		if ! /sbin/lsmod | grep sunrpc > /dev/null ; then
+			 /sbin/modprobe sunrpc || exit 1
+		fi
+	}
+
+	# Make sure the mount worked.
+	[ -z "${RPCMTAB}" ] && RPCMTAB=`grep -v '^#' /proc/mounts | \
+		awk '{ if ($3 ~ /^rpc_pipefs$/ ) print $2}'`
+	[ -z "${RPCMTAB}" ] && {
+		echo "Error: RPC MTAB does not exist."
+		exit 1
+	}	
+
+	# Start daemon.
+	daemon $prog ${OPTIONS}
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/rpc.idmapd
+	;;
+  stop)
+	# Stop daemon.
+	echo -n $"Shutting down RPC idmapd: "
+	killproc $prog
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/rpc.idmapd
+	;;
+  status)
+	status rpc.idmapd
+	RETVAL=$?
+	;;
+  restart|reload)
+	$0 stop
+	$0 start
+	RETVAL=$?
+	;;
+  condrestart)
+	if [ -f /var/lock/subsys/rpc.idmapd ]; then
+		$0 restart
+		RETVAL=$?
+	fi
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|condstart|condrestart|status}"
+	exit 1
+esac
+
+exit $RETVAL

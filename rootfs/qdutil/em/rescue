@@ -1,0 +1,47 @@
+#!/bin/ash
+
+if [ "$2" = "target" ]; then
+export QDDIR=/mnt/mmc0p2/qdutil/coreLib
+else
+export QDDIR=/mnt/mmc1p1/qdutil/coreLib
+fi
+
+export QT_QWS_FONTDIR=$QDDIR/qisda/qt/lib/fonts
+
+ln -s  $QDDIR/lib/libasound.so.2.0.0 /lib/libasound.so.2
+ln -s  $QDDIR/lib/libstdc++.so.6.0.9 /lib/libstdc++.so.6
+
+kill $(ps |grep QBookApp | grep -v grep | awk '{print $1}')
+killall QFactory
+
+# setup lang & path
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export LD_LIBRARY_PATH=/lib:/usr/lib:$QDDIR/qisda/tslib/lib:$QDDIR/lib
+export PATH=$QDDIR/sbin:$QDDIR/bin:$QDDIR/qisda/bin:$QDDIR/qisda/tslib/bin:$PATH
+
+# setup tslib
+export TSLIB_CONSOLEDEVICE=none
+export TSLIB_FBDEVICE=/dev/fb0
+export TSLIB_TSDEVICE=/dev/input/event1
+#export TSLIB_CALIBFILE=$QDDIR/qisda/tslib/etc/pointercal
+export TSLIB_CONFFILE=$QDDIR/qisda/tslib/etc/ts.conf
+export TSLIB_PLUGINDIR=$QDDIR/qisda/tslib/lib/ts
+
+# setup qt qws
+export QWS_MOUSE_PROTO="qbook:/dev/input/event1"
+export QWS_DBLCLICK_DISTANCE=20
+export QWS_KEYBOARD="qbook:/dev/input/event0"
+
+# for 9" screen
+#export QWS_DISPLAY="transformed:qbook:mmWidth=203:mmHeight=270:0"
+
+# for 6" screen
+export QWS_DISPLAY="transformed:qbook:mmWidth=158:mmHeight=211:0"
+
+# exec app
+$1 -qws &
+
+# remove fifo if any
+rm -f /tmp/mmi
+

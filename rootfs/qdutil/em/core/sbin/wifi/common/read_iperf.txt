@@ -1,0 +1,6 @@
+2. iperf server
+iperf -s
+
+3. iperf client
+./iperf -c 192.168.2.117 -w 128k -t 120 -i 10
+                   ^^^^^ server IP

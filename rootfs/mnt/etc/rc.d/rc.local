@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+#touch /var/lock/subsys/local
+
+#for wifi
+#export LD_LIBRARY_PATH=/usr/local/arm/tslib/lib:/usr/local/Trolltech/QtEmbedded-4.5.1-arm/plugins/imageformats:/usr/local/lib
+#insmod /usr/local/sbin/mt5921sta_sdio.ko
+#/usr/local/sbin/iwconfig wlan0 mode managed essid aaa
+#/usr/local/sbin/iwconfig wlan0 mode managed essid WIFI_TEST_ONLY_ASUSAP
+#ifconfig wlan0 192.168.1.123
+#/sbin/udhcpc -i wlan0 -s /usr/local/sbin/simple.script &

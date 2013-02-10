@@ -1,0 +1,11 @@
+ABORT 'NO DIAL TONE' 
+ABORT 'NO ANSWER' 
+ABORT 'NO CARRIER' 
+ABORT DELAYED
+SAY 'Modem initialize....\n'
+'' AT
+OK ATZ
+OK AT+CGDCONT=1,"ip","wap.tim.it","",0,0
+SAY 'Dialing.....\n'
+OK ATDT*99#           
+CONNECT '' 

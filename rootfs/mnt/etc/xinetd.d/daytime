@@ -1,0 +1,15 @@
+# default: off
+# description: An internal xinetd service which gets the current system time \
+# then prints it out in a format like this: "Wed Nov 13 22:30:27 EST 2002". \
+# This is the tcp version.
+
+service daytime
+{
+	type		= INTERNAL
+	id		= daytime-stream
+	socket_type	= stream
+	protocol	= tcp
+	user		= root
+	wait		= no
+	disable		= yes
+}                                                                               

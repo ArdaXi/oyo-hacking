@@ -1,0 +1,5 @@
+PCMCIA=no
+PCIC=
+PCIC_OPTS=do_scan=0
+CORE_OPTS=
+CARDMGR_OPTS=-f

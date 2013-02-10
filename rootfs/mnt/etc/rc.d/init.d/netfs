@@ -1,0 +1,168 @@
+#!/bin/bash
+#
+# netfs         Mount network filesystems.
+#
+# Authors:	Bill Nottingham <notting@redhat.com>
+# 		Miquel van Smoorenburg, <miquels@drinkel.nl.mugnet.org>
+#
+# chkconfig: 345 25 75
+# description: Mounts and unmounts all Network File System (NFS), \
+#	       SMB/CIFS (Lan Manager/Windows), and NCP (NetWare) mount points.
+### BEGIN INIT INFO
+# Provides: $local_fs $remote_fs
+### END INIT INFO
+
+[ -f /etc/sysconfig/network ] || exit 0
+. /etc/init.d/functions
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "${NETWORKING}" = "no" ] && exit 0
+
+NFSFSTAB=`LC_ALL=C awk '!/^#/ && $3 ~ /^nfs/ && $3 != "nfsd" && $4 !~ /noauto/ { print $2 }' /etc/fstab`
+SMBFSTAB=`LC_ALL=C awk '!/^#/ && $3 == "smbfs" && $4 !~ /noauto/ { print $2 }' /etc/fstab`
+CIFSFSTAB=`LC_ALL=C awk '!/^#/ && $3 == "cifs" && $4 !~ /noauto/ { print $2 }' /etc/fstab`
+NCPFSTAB=`LC_ALL=C awk '!/^#/ && $3 == "ncpfs" && $4 !~ /noauto/ { print $2 }' /etc/fstab`
+NETDEVMTAB=`LC_ALL=C awk '!/^#/ && $4 ~ /_netdev/ && $2 != "/" { print $2 }' /etc/mtab`
+NFSMTAB=`LC_ALL=C awk '$3 ~ /^nfs/ && $3 != "nfsd" && $2 != "/" { print $2 }' /proc/mounts`
+SMBMTAB=`LC_ALL=C awk '$3 == "smbfs" { print $2 }' /proc/mounts`
+CIFSMTAB=`LC_ALL=C awk '$3 == "cifs" { print $2 }' /proc/mounts`
+NCPMTAB=`LC_ALL=C awk '$3 == "ncpfs" { print $2 }' /proc/mounts`
+
+# See how we were called.
+case "$1" in
+  start)
+#        [ -n "$NFSFSTAB" ] && 
+#	  {
+#	    [ ! -f /var/lock/subsys/portmap ] && service portmap start
+#	    action $"Mounting NFS filesystems: " mount -a -t nfs,nfs4
+#	  }
+        [ -n "$SMBFSTAB" ] && action $"Mounting SMB filesystems: " mount -a -t smbfs
+        [ -n "$CIFSFSTAB" ] && action $"Mounting CIFS filesystems: " mount -a -t cifs
+        [ -n "$NCPFSTAB" ] && action $"Mounting NCP filesystems: " mount -a -t ncpfs
+#	touch /var/lock/subsys/netfs
+#	action $"Mounting other filesystems: " mount -a -t nonfs,nfs4,smbfs,cifs,ncpfs,gfs
+	;;
+  stop)
+        # Unmount loopback stuff first
+	remaining=`LC_ALL=C awk '$1 ~ /^\/dev\/loop/ && $2 != "/" {print $2}' /proc/mounts`
+	devremaining=`LC_ALL=C awk '$1 ~ /^\/dev\/loop/ && $2 != "/" {print $1}' /proc/mounts`
+	[ -n "$remaining" ] && {
+	        sig=
+		retry=3
+		while [ -n "$remaining" -a "$retry" -gt 0 ]
+		do
+			if [ "$retry" -lt 3 ]; then
+				action $"Unmounting loopback filesystems (retry):" umount $remaining
+			else
+				action $"Unmounting loopback filesystems: " umount $remaining
+		        fi
+			for dev in $devremaining ; do
+				losetup $dev >/dev/null 2>&1 && \
+				action $"Detaching loopback device $dev: " losetup -d $dev
+			done	
+			remaining=`LC_ALL=C awk '$1 ~ /^\/dev\/loop/ && $2 != "/" {print $2}' /proc/mounts`
+			devremaining=`LC_ALL=C awk '$1 ~ /^\/dev\/loop/ && $2 != "/" {print $1}' /proc/mounts`
+			[ -z "$remaining" ] && break
+			/sbin/fuser -k -m $sig $remaining >/dev/null
+			sleep 5
+			retry=$(($retry -1))
+			sig=-9
+		done
+	}
+  	[ -n "$NETDEVMTAB" ] && {
+		sig=
+		retry=3
+		remaining=`LC_ALL=C awk '!/^#/ && $4 ~ /_netdev/ && $2 != "/" {print $2}' /etc/mtab`
+		while [ -n "$remaining" -a "$retry" -gt 0 ]
+		do
+			if [ "$retry" -lt 3 ]; then
+				action $"Unmounting network block filesystems (retry): " umount -a -O _netdev
+			else
+				action $"Unmounting network block filesystems: " umount -a -O _netdev
+			fi
+			sleep 2
+			remaining=`LC_ALL=C awk '!/^#/ && $4 ~ /_netdev/ && $2 != "/" {print $2}' /etc/mtab`
+			[ -z "$remaining" ] && break
+			/sbin/fuser -k -m $sig $remaining >/dev/null
+			sleep 5
+			retry=$(($retry - 1))
+			sig=-9
+		done
+	}
+  	[ -n "$NFSMTAB" ] && {
+		sig=
+		retry=3
+		remaining=`LC_ALL=C awk '$3 ~ /^nfs/ && $2 != "/" {print $2}' /proc/mounts`
+		while [ -n "$remaining" -a "$retry" -gt 0 ]
+		do
+			if [ "$retry" -lt 3 ]; then
+				action $"Unmounting NFS filesystems (retry): " umount -f -l $remaining
+			else
+				action $"Unmounting NFS filesystems: " umount -f -l $remaining
+			fi
+			sleep 2
+			remaining=`LC_ALL=C awk '$3 ~ /^nfs/ && $2 != "/" {print $2}' /proc/mounts`
+			[ -z "$remaining" ] && break
+			/sbin/fuser -k -m $sig $remaining >/dev/null
+			sleep 5
+			retry=$(($retry - 1))
+			sig=-9
+		done
+	}
+	[ -n "$SMBMTAB" ] && action $"Unmounting SMB filesystems: " umount -a -t smbfs
+	[ -n "$CIFSMTAB" ] && action $"Unmounting CIFS filesystems: " umount -a -t cifs
+	[ -n "$NCPMTAB" ] && action $"Unmounting NCP filesystems: " umount -a -t ncpfs
+	rm -f /var/lock/subsys/netfs
+	;;
+  status)
+	if [ -f /proc/mounts ] ; then
+	        [ -n "$NFSFSTAB" ] && {
+		     echo $"Configured NFS mountpoints: "
+		     for fs in $NFSFSTAB; do echo $fs ; done
+		}
+	        [ -n "$SMBFSTAB" ] && {
+		     echo $"Configured SMB mountpoints: "
+		     for fs in $SMBFSTAB; do echo $fs ; done
+		}
+	        [ -n "$CIFSFSTAB" ] && {
+		     echo $"Configured CIFS mountpoints: "
+		     for fs in $CIFSFSTAB; do echo $fs ; done
+		}
+	        [ -n "$NCPFSTAB" ] && {
+		     echo $"Configured NCP mountpoints: "
+		     for fs in $NCPFSTAB; do echo $fs ; done
+		}
+		[ -n "$NFSMTAB" ] && {
+                      echo $"Active NFS mountpoints: "
+		      for fs in $NFSMTAB; do echo $fs ; done
+		}
+		[ -n "$SMBMTAB" ] && {
+                      echo $"Active SMB mountpoints: "
+		      for fs in $SMBMTAB; do echo $fs ; done
+		}
+		[ -n "$CIFSMTAB" ] && {
+                      echo $"Active CIFS mountpoints: "
+		      for fs in $CIFSMTAB; do echo $fs ; done
+		}
+		[ -n "$NCPMTAB" ] && {
+                      echo $"Active NCP mountpoints: "
+		      for fs in $NCPMTAB; do echo $fs ; done
+		}
+	else
+		echo $"/proc filesystem unavailable"
+	fi
+	;;
+  restart)
+	$0 stop
+	$0 start
+	;;
+  reload)
+        $0 start
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|reload|status}"
+	exit 1
+esac
+
+exit 0

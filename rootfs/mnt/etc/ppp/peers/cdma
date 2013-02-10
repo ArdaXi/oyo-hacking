@@ -1,0 +1,17 @@
+-detach
+noauth
+/dev/ttyUSB3
+115200
+debug
+defaultroute
+usepeerdns
+crtscts
+lock
+connect '/sbin/chat -v -t6 -f /etc/ppp/peers/cdma_chat'
+ipcp-accept-local
+ipcp-accept-remote
+ipcp-max-configure 30
+lcp-max-configure 30
+maxfail 40
+persist
+noccp

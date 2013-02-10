@@ -1,0 +1,103 @@
+#!/bin/bash
+#
+# rpcgssd       Start up and shut down RPCSEC GSS daemon
+#
+# Authors:	Chuck Lever <cel@netapp.com>
+#
+# chkconfig: 345 19 69
+# description: Starts user-level daemon that manages RPCSEC GSS contexts \
+#	       for the NFSv4 client.
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+if [ ! -f /etc/sysconfig/network ]; then
+    exit 0
+fi
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "${NETWORKING}" = "no" ] && exit 0
+
+[ ! -x /usr/sbin/rpc.gssd ] && exit 0
+
+# Check for and source configuration file otherwise set defaults
+[ -f /etc/sysconfig/nfs ] && . /etc/sysconfig/nfs
+[ "${SECURE_NFS}" != "yes" ] && exit 0
+
+# List of kernel modules to load
+[ -z "${SECURE_NFS_MODS}" ] && SECURE_NFS_MODS="des rpcsec_gss_krb5"
+
+
+# Try to use machine credentials by default
+OPTIONS="-m"
+RETVAL=0
+prog="rpc.gssd"
+
+case "$1" in
+  start|condstart)
+	# Make sure the daemon is not already running.
+	if status $prog > /dev/null ; then
+		exit 0
+	fi
+	rm -f /var/lock/subsys/$prog
+
+	echo -n $"Starting RPC gssd: "
+
+	# Load sunrpc which mounts the rpc_pipes fs.
+	[ -x /sbin/lsmod -a -x /sbin/modprobe ] && {
+		if ! /sbin/lsmod | grep sunrpc > /dev/null ; then
+			 /sbin/modprobe sunrpc || exit 1
+		fi
+		# Load rpcsec modules
+		for i in ${SECURE_NFS_MODS}
+		do 
+			if ! /sbin/lsmod | grep $i > /dev/null ;  then
+				 /sbin/modprobe $i || exit 1
+			fi
+		done
+	}
+	# Make sure the mount worked.
+	[ -z "${RPCMTAB}" ] && RPCMTAB=`grep -v '^#' /proc/mounts | \
+		awk '{ if ($3 ~ /^rpc_pipefs$/ ) print $2}'`
+	[ -z "${RPCMTAB}" ] && {
+		echo "Error: RPC MTAB does not exist."
+		exit 1
+	}	
+
+	# Start daemon.
+	daemon $prog ${OPTIONS}
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/rpc.gssd
+	;;
+  stop)
+	# Stop daemon.
+	echo -n $"Shutting down RPC gssd: "
+	killproc $prog
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/rpc.gssd
+	;;
+  status)
+	status rpc.gssd
+	RETVAL=$?
+	;;
+  restart|reload)
+	$0 stop
+	$0 start
+	RETVAL=$?
+	;;
+  condrestart)
+	if [ -f /var/lock/subsys/rpc.gssd ]; then
+		$0 restart
+		RETVAL=$?
+	fi
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|condstart|condrestart|status}"
+	exit 1
+esac
+
+exit $RETVAL

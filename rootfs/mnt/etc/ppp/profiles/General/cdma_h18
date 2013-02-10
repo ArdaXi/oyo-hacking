@@ -1,0 +1,21 @@
+-detach
+noauth
+nopcomp
+/dev/ttyUSB3
+115200
+modem
+debug
+defaultroute
+usepeerdns
+crtscts
+user ""
+password ""
+connect '/sbin/chat -v -t6 -f /tmp/cdma_chat_h18'
+ipcp-accept-local
+ipcp-accept-remote
+ipcp-max-configure 30
+lcp-max-configure 30
+maxfail 10
+persist
+noccp
+holdoff 1

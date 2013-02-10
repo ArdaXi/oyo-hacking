@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ -f /etc/ppp/resolv.conf ]; then
+   cp -f /etc/ppp/resolv.conf /etc/resolv.conf
+   cat /etc/ppp/resolv.conf.google >> /etc/resolv.conf
+else
+   cp -f /etc/ppp/resolv.conf.google /etc/resolv.conf
+fi
+                                

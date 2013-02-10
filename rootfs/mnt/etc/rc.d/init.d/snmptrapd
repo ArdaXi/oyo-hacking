@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# ucd-snmp init file for snmptrapd
+#
+# chkconfig: - 50 50
+# description: Simple Network Management Protocol (SNMP) Trap Daemon
+#
+# processname: /usr/sbin/snmptrapd
+# config: /etc/snmp/snmptrapd.conf
+# config: /usr/share/snmp/snmptrapd.conf
+# pidfile: /var/run/snmptrapd.pid
+# 
+# source function library
+. /etc/init.d/functions
+
+[ -e /etc/snmp/snmptrapd.options ] && . /etc/snmp/snmptrapd.options
+
+OPTIONS="-Lsd -p /var/run/snmptrapd.pid"
+RETVAL=0
+prog="snmptrapd"
+
+start() {
+	echo -n $"Starting $prog: "
+        daemon /usr/sbin/snmptrapd $OPTIONS
+	RETVAL=$?
+	echo
+	touch /var/lock/subsys/snmptrapd
+	return $RETVAL
+}
+
+stop() {
+	echo -n $"Stopping $prog: "
+	killproc /usr/sbin/snmptrapd
+	RETVAL=$?
+	echo
+	rm -f /var/lock/subsys/snmptrapd
+	return $RETVAL
+}
+
+reload(){
+	stop
+	start
+}
+
+restart(){
+	stop
+	start
+}
+
+condrestart(){
+    [ -e /var/lock/subsys/snmptrapd ] && restart
+    return 0
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  restart)
+	restart
+        ;;
+  reload)
+	reload
+        ;;
+  condrestart)
+	condrestart
+	;;
+  status)
+        status snmptrapd
+	RETVAL=$?
+        ;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
+	RETVAL=1
+esac
+
+exit $RETVAL

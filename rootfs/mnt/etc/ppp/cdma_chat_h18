@@ -1,0 +1,13 @@
+ABORT 'NO DIAL TONE' 
+ABORT 'NO ANSWER' 
+ABORT 'NO CARRIER' 
+ABORT DELAYED
+SAY 'Modem initialize....\n'
+'' AT
+OK ATZ
+OK AT+CGDCONT=1,"ip","internet","",0,0
+#OK AT+CPIN=0000
+#SAY 'Authentication pass......\n'
+SAY 'Dialing.....\n'
+OK ATDT*99#           
+CONNECT '' 
