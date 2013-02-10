@@ -1,0 +1,52 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs() {
+	echo "$PREREQ"
+}
+
+case "$1" in
+	prereqs)
+		prereqs
+		exit 0
+	;;
+esac
+
+. "${CONFDIR}/initramfs.conf"
+. /usr/share/initramfs-tools/hook-functions
+
+# Install dropbear if explicitly enabled, or in case of a cryptroot setup if not explicitly disabled
+if [ "${DROPBEAR}" = "y" ] || ( [ "${DROPBEAR}" != "n" ] && [ -r "/etc/crypttab" ] ); then
+	if [ ! -x "/usr/sbin/dropbear" ]; then
+		if [ "${DROPBEAR}" = "y" ]; then
+			echo "dropbear: FAILURE: Dropbear not found!"
+		else
+			echo "dropbear: WARNING: Dropbear not found, remote unlocking of cryptroot via ssh won't work!"
+		fi
+	else
+		rm -f "${DESTDIR}/sbin/dropbear"
+		copy_exec "/usr/sbin/dropbear" "/sbin/"
+		cp /lib/libnss_* "${DESTDIR}/lib/"
+		echo "root:x:0:0:root:/root:/bin/sh" > "${DESTDIR}/etc/passwd"
+		for keytype in "dss" "rsa"; do
+			if [ ! -f "/etc/initramfs-tools/etc/dropbear/dropbear_${keytype}_host_key" ]; then
+				mkdir -p "/etc/initramfs-tools/etc/dropbear"
+				dropbearkey -t "${keytype}" -f "/etc/initramfs-tools/etc/dropbear/dropbear_${keytype}_host_key"
+			fi
+		done
+		cp -R /etc/initramfs-tools/etc/dropbear "${DESTDIR}/etc/"
+		if [ ! -f "/etc/initramfs-tools/root/.ssh/authorized_keys" ]; then
+			mkdir -p "/etc/initramfs-tools/root/.ssh"
+			if [ ! -f "/etc/initramfs-tools/root/.ssh/id_rsa.pub" ]; then
+				dropbearkey -t rsa -f /etc/initramfs-tools/root/.ssh/id_rsa.dropbear
+				/usr/lib/dropbear/dropbearconvert dropbear openssh /etc/initramfs-tools/root/.ssh/id_rsa.dropbear /etc/initramfs-tools/root/.ssh/id_rsa
+				dropbearkey -y -f /etc/initramfs-tools/root/.ssh/id_rsa.dropbear | grep "^ssh-rsa " > /etc/initramfs-tools/root/.ssh/id_rsa.pub
+			fi
+			cat /etc/initramfs-tools/root/.ssh/id_rsa.pub >> /etc/initramfs-tools/root/.ssh/authorized_keys
+		fi
+		mkdir -p "${DESTDIR}/root/.ssh"
+		cp /etc/initramfs-tools/root/.ssh/authorized_keys "${DESTDIR}/root/.ssh/"
+	fi
+fi
+

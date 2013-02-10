@@ -1,0 +1,24 @@
+#!/bin/sh
+
+PREREQ="udev"
+
+prereqs() {
+	echo "$PREREQ"
+}
+
+case "$1" in
+	prereqs)
+		prereqs
+		exit 0
+	;;
+esac
+
+. /scripts/functions
+
+grep -E "[[:space:]]+devpts$" /proc/filesystems >/dev/null 2>&1 || exit 0
+
+log_begin_msg "Mounting devpts"
+
+mkdir -p /dev/pts
+mount -t devpts none /dev/pts
+

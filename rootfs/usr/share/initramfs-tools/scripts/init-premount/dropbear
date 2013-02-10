@@ -1,0 +1,36 @@
+#!/bin/sh
+
+PREREQ="udev devpts"
+
+prereqs() {
+	echo "$PREREQ"
+}
+
+case "$1" in
+	prereqs)
+		prereqs
+		exit 0
+	;;
+esac
+
+. /scripts/functions
+
+[ -x /sbin/dropbear ] || exit 0
+
+log_begin_msg "Starting dropbear"
+
+. /conf/initramfs.conf
+
+for x in $(cat /proc/cmdline); do
+	case "$x" in
+		ip=*)
+			IPOPTS="${x#ip=}"
+			;;
+	esac
+done
+
+configure_networking &
+
+mkdir -p /var/run
+/sbin/dropbear
+

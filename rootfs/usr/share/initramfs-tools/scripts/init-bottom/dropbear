@@ -1,0 +1,23 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs() {
+	echo "$PREREQ"
+}
+
+case "$1" in
+	prereqs)
+		prereqs
+		exit 0
+	;;
+esac
+
+. /scripts/functions
+
+[ -r /var/run/dropbear.pid ] || exit 0
+
+log_begin_msg "Stopping dropbear"
+
+kill `cat /var/run/dropbear.pid`
+

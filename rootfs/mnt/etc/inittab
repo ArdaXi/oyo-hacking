@@ -42,3 +42,6 @@ pr:12345:powerokwait:/sbin/shutdown -c "Power Restored; Shutdown Cancelled"
 
 # Run gettys in standard runlevels
 3:2345:respawn:/sbin/getty 115200 ttySAC0
+
+# Run dropbear -ArdaXi
+SS:2345:respawn:/usr/sbin/dropbear -d /usr/share/dropbear/dropbear_dss_host_key -r /usr/share/dropbear/dropbear_rsa_host_key -F -E -p 22

@@ -1,0 +1,17 @@
+#
+# DROPBEAR: [ y | n ]
+#
+# Use dropbear if available. If not specified, dropbear will be used - if
+# possible - in case of cryptroot.
+#
+
+#DROPBEAR=y
+
+#
+# UMASK: [ 4-DIGIT OCTAL UMASK ]
+#
+# umask to use when creating an initramfs
+#
+
+UMASK=0077
+

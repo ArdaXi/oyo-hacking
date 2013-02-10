@@ -43,6 +43,12 @@ if [ -f /mnt/mmc1p1/usbdebug ]; then
    echo "usbdebug"
    /usr/local/sbin/usbdebug.sh
 fi
+if [ -f /mnt/mmc1p1/dropbear_dss_host_key ]; then
+   cp /mnt/mmc1p1/dropbear_dss_host_key /usr/share/dropbear/
+fi
+if [ -f /mnt/mmc1p1/dropbear_rsa_host_key ]; then
+   cp /mnt/mmc1p1/dropbear_rsa_host_key /usr/share/dropbear/
+fi
 umount /mnt/mmc1p1
 
 if [ -f /tmp/exec_em ]; then
