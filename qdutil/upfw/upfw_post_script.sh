@@ -12,8 +12,10 @@ fi
 
 echo save QBookApp.ini
 if [ -f /mnt/mmc0p3/settings/QBookApp.ini ]; then
-	cp /mnt/mmc0p3/settings/QBookApp.ini /tmp/QBookApp.ini
-	echo "=== backup QBookApp ini === "
+	if [ -f /mnt/mmc0p3/techinc ]; then
+		cp /mnt/mmc0p3/settings/QBookApp.ini /tmp/QBookApp.ini
+		echo "=== backup QBookApp ini === "
+	fi
 fi
 
 echo format mmcblk0p3 to clean rwdata
@@ -53,6 +55,7 @@ if [ -f /mnt/mmc0p1/home/preload/preload.tar ]; then
 	sync
 	sync
 fi
+touch /mnt/mmc0p3/techinc
 echo restore QBookApp.ini
 if [ -f /tmp/QBookApp.ini ]; then
 	mkdir -p /mnt/mmc0p3/settings/
