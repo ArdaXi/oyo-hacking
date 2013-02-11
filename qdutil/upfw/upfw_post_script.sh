@@ -18,6 +18,12 @@ if [ -f /mnt/mmc0p3/settings/QBookApp.ini ]; then
 	fi
 fi
 
+if [ -d /mnt/mmc0p3/rootfs ]; then
+	mount /dev/mmcblk0p1 /mnt/mmc0p1
+	cp -f /mnt/mmc0p3/rootfs/* /mnt/mmc0p1/
+	umount /dev/mmcblk0p1
+fi
+
 echo format mmcblk0p3 to clean rwdata
 umount /dev/mmcblk0p3
 mkfs.ext3 /dev/mmcblk0p3
