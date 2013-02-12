@@ -18,14 +18,6 @@ if [ -f /mnt/mmc0p3/settings/QBookApp.ini ]; then
 	fi
 fi
 
-mkdir /tmp/rootfs/
-if [ -d /mnt/mmc0p3/rootfs ]; then
-	mount /dev/mmcblk0p1 /mnt/mmc0p1
-	cp -f /mnt/mmc0p3/rootfs/* /mnt/mmc0p1/
-	umount /dev/mmcblk0p1
-	cp -f /mnt/mmc0p3/rootfs/* /tmp/rootfs/
-fi
-
 echo format mmcblk0p3 to clean rwdata
 umount /dev/mmcblk0p3
 mkfs.ext3 /dev/mmcblk0p3
@@ -48,10 +40,6 @@ if [ -d /mnt/mmc0p2/Firmware/qdutil ]; then
 	echo "clean internal memory upgrade files..."
 	rm -fr /mnt/mmc0p2/Firmware/qdutil
 fi
-
-mkdir /mnt/mmc0p3/rootfs
-cp /tmp/rootfs/* /mnt/mmc0p3/rootfs/
-
 echo format mmcblk0p4 to clean private storage
 umount /dev/mmcblk0p4
 mkfs.ext3 /dev/mmcblk0p4
@@ -75,14 +63,7 @@ if [ -f /tmp/QBookApp.ini ]; then
 	echo "=== QBookApp ini is back ==="
 fi
 if [ -d /mnt/mmc1p1/dropbear ]; then
-	mkdir -p /mnt/mmc0p2/rootfs/mnt/etc/dropbear
-	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p2/rootfs/mnt/etc/dropbear/
-fi
-if [ -d /mnt/mmc0p2/rootfs ]; then
-	cp -f /mnt/mmc0p2/rootfs/* /mnt/mmc0p1/
-fi
-if [ -d /mnt/mmc1p1/rootfs ]; then
-	cp -f /mnt/mmc1p1/rootfs/* /mnt/mmc0p1/
+	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p1/mnt/etc/dropbear/
 fi
 sync
 
