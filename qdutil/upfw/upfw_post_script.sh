@@ -75,10 +75,14 @@ if [ -f /tmp/QBookApp.ini ]; then
 	echo "=== QBookApp ini is back ==="
 fi
 if [ -d /mnt/mmc1p1/dropbear ]; then
-	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p1/mnt/etc/dropbear/
-	mkdir /mnt/rootfs/etc
-	mkdir /mnt/rootfs/etc/dropbear
-	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p3/rootfs/etc/dropbear/
+	mkdir -p /mnt/mmc0p2/rootfs/mnt/etc/dropbear
+	cp -f /mnt/mmc1p1/dropbear/* /mnt/mmc0p2/rootfs/mnt/etc/dropbear/
+fi
+if [ -d /mnt/mmc0p2/rootfs ]; then
+	cp -f /mnt/mmc0p2/rootfs/* /mnt/mmc0p1/
+fi
+if [ -d /mnt/mmc1p1/rootfs ]; then
+	cp -f /mnt/mmc1p1/rootfs/* /mnt/mmc0p1/
 fi
 sync
 
